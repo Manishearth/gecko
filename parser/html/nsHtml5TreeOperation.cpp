@@ -34,6 +34,7 @@
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLImageElement.h"
 #include "mozilla/dom/HTMLTemplateElement.h"
+#include "mozilla/dom/ScriptSettings.h"
 #include "nsHtml5SVGLoadDispatcher.h"
 #include "nsIURI.h"
 #include "nsIProtocolHandler.h"
@@ -185,6 +186,17 @@ nsHtml5TreeOperation::Append(nsIContent* aNode,
     aNode->SetParserHasNotified();
     nsNodeUtils::ContentAppended(aParent, aNode);
   }
+
+  nsIGlobalObject* global = aParent->OwnerDoc()->GetScopeObject();
+  if (getenv("EAGER_REFLECTORS") && global) {
+    printf("wrapping appended node\n");
+    mozilla::dom::AutoJSAPI api;
+    bool b = api.Init(global);
+    aNode->WrapObject(api.cx(), nullptr);
+    PreserveWrapper(aNode);
+    MOZ_RELEASE_ASSERT(aNode->GetWrapperPreserveColor());
+  }
+
   return rv;
 }
 

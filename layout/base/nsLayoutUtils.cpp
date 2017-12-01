@@ -4000,6 +4000,12 @@ nsLayoutUtils::PaintFrame(gfxContext* aRenderingContext, nsIFrame* aFrame,
   Telemetry::AccumulateTimeDelta(Telemetry::PAINT_RASTERIZE_TIME,
                                  paintStart);
 
+  if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
+    TimeStamp paintEnd = TimeStamp::Now();
+    nsIDocument* doc = aFrame->PresContext()->Document();
+    doc->RecordPaint(paintEnd - paintStart);
+  }
+
   builder.Check();
 
   if (gfxPrefs::GfxLoggingPaintedPixelCountEnabled()) {

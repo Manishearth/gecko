@@ -1575,12 +1575,31 @@ nsIDocument::nsIDocument()
     mUserHasActivatedInteraction(false),
     mServoRestyleRootDirtyBits(0),
     mThrowOnDynamicMarkupInsertionCounter(0),
-    mIgnoreOpensDuringUnloadCounter(0)
+    mIgnoreOpensDuringUnloadCounter(0),
+    mDocumentLoadEventComplete(false)
 {
   SetIsInDocument();
   for (auto& cnt : mIncCounters) {
     cnt = 0;
   }
+}
+
+void nsIDocument::RecordPaint(const mozilla::TimeDuration& time) {
+  if (mDocumentLoadEventComplete) {
+    return;
+  }
+  mPaintingBeforeLoad += time;
+}
+
+void nsIDocument::MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart) {
+  mDocumentLoadEventComplete = true;
+  if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
+    nsAutoCString spec;
+    mDocumentURI->GetSpec(spec);
+    printf("%s spent %g ms painting out of %llu ms before load\n",
+           spec.get(), mPaintingBeforeLoad.ToMilliseconds(), aLoadEventStart);
+  }
+  
 }
 
 nsDocument::nsDocument(const char* aContentType)

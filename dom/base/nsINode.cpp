@@ -26,6 +26,7 @@
 #include "mozilla/TextEditor.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/css/StyleRule.h"
+#include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/Event.h"
 #include "mozilla/dom/ShadowRoot.h"
@@ -150,6 +151,22 @@ nsINode::nsSlots::Unlink()
 }
 
 //----------------------------------------------------------------------
+
+#ifdef MOZILLA_INTERNAL_API
+nsINode::nsINode(already_AddRefed<mozilla::dom::NodeInfo>& aNodeInfo)
+: mNodeInfo(aNodeInfo)
+, mParent(nullptr)
+#ifndef BOOL_FLAGS_ON_WRAPPER_CACHE
+, mBoolFlags(0)
+#endif
+, mNextSibling(nullptr)
+, mPreviousSibling(nullptr)
+, mFirstChild(nullptr)
+, mSubtreeRoot(this)
+, mSlots(nullptr)
+{
+}
+#endif
 
 nsINode::~nsINode()
 {
@@ -1655,6 +1672,16 @@ nsINode::doInsertChildAt(nsIContent* aKid, uint32_t aIndex,
       (new AsyncEventDispatcher(aKid, mutation))->RunDOMEventWhenSafe();
     }
   }
+
+  if (false && getenv("EAGER_REFLECTORS") && !aKid->GetWrapperMaybeDead() && GetOwnerGlobal()) {
+    printf("wrapping child\n");
+    AutoJSAPI api;
+    bool b = api.Init(GetOwnerGlobal());
+    aKid->WrapObject(api.cx(), nullptr);
+    PreserveWrapper(aKid);
+    MOZ_RELEASE_ASSERT(aKid->GetWrapperPreserveColor());
+  }
+
 
   return NS_OK;
 }

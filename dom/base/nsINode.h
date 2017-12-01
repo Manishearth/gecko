@@ -353,19 +353,7 @@ public:
   friend class nsAttrAndChildArray;
 
 #ifdef MOZILLA_INTERNAL_API
-  explicit nsINode(already_AddRefed<mozilla::dom::NodeInfo>& aNodeInfo)
-  : mNodeInfo(aNodeInfo)
-  , mParent(nullptr)
-#ifndef BOOL_FLAGS_ON_WRAPPER_CACHE
-  , mBoolFlags(0)
-#endif
-  , mNextSibling(nullptr)
-  , mPreviousSibling(nullptr)
-  , mFirstChild(nullptr)
-  , mSubtreeRoot(this)
-  , mSlots(nullptr)
-  {
-  }
+  explicit nsINode(already_AddRefed<mozilla::dom::NodeInfo>& aNodeInfo);
 #endif
 
   virtual ~nsINode();
@@ -526,7 +514,7 @@ public:
    */
   nsIDocument *OwnerDoc() const
   {
-    return mNodeInfo->GetDocument();
+    return mNodeInfo ? mNodeInfo->GetDocument() : nullptr;
   }
 
   /**

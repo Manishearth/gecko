@@ -25,6 +25,7 @@
 #include "nsDataHashtable.h"             // for member
 #include "nsURIHashKey.h"                // for member
 #include "mozilla/net/ReferrerPolicy.h"  // for member
+#include "nsDOMNavigationTiming.h"
 #include "nsWeakReference.h"
 #include "mozilla/UseCounter.h"
 #include "mozilla/WeakPtr.h"
@@ -3244,6 +3245,9 @@ public:
   virtual bool AllowPaymentRequest() const = 0;
   virtual void SetAllowPaymentRequest(bool aAllowPaymentRequest) = 0;
 
+  void RecordPaint(const mozilla::TimeDuration& time);
+  void MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart);
+
 protected:
   bool GetUseCounter(mozilla::UseCounter aUseCounter)
   {
@@ -3669,6 +3673,9 @@ protected:
 
   // The channel that got passed to nsDocument::StartDocumentLoad(), if any.
   nsCOMPtr<nsIChannel> mChannel;
+
+  mozilla::TimeDuration mPaintingBeforeLoad;
+  bool mDocumentLoadEventComplete;
 private:
   nsCString mContentType;
   nsString mId;

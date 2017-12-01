@@ -1048,6 +1048,8 @@ nsDocumentViewer::LoadComplete(nsresult aStatus)
         timing->NotifyLoadEventStart();
       }
 
+      mDocument->MarkLoadEventComplete(timing->GetLoadEventStart() - timing->GetNavigationStart());
+
       // Dispatch observer notification to notify observers document load is complete.
       nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
       if (os) {
