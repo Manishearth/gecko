@@ -1737,10 +1737,13 @@ PresShell::Initialize(nscoord aWidth, nscoord aHeight)
 
   if (!rootFrame) {
     nsAutoScriptBlocker scriptBlocker;
+    TimeStamp fcStart = TimeStamp::Now();
     mFrameConstructor->BeginUpdate();
     rootFrame = mFrameConstructor->ConstructRootFrame();
     mFrameConstructor->SetRootFrame(rootFrame);
     mFrameConstructor->EndUpdate();
+    TimeStamp fcEnd = TimeStamp::Now();
+    mPresContext->Document()->RecordFrameConstruction(fcEnd - fcStart);
   }
 
   NS_ENSURE_STATE(!mHaveShutDown);
@@ -1775,6 +1778,8 @@ PresShell::Initialize(nscoord aWidth, nscoord aHeight)
 
   if (root) {
     {
+
+      TimeStamp fcStart = TimeStamp::Now();
       nsAutoCauseReflowNotifier reflowNotifier(this);
       mFrameConstructor->BeginUpdate();
 
@@ -1789,6 +1794,8 @@ PresShell::Initialize(nscoord aWidth, nscoord aHeight)
       NS_ENSURE_STATE(!mHaveShutDown);
 
       mFrameConstructor->EndUpdate();
+      TimeStamp fcEnd = TimeStamp::Now();
+      mPresContext->Document()->RecordFrameConstruction(fcEnd - fcStart);
     }
 
     // nsAutoCauseReflowNotifier (which sets up a script blocker) going out of

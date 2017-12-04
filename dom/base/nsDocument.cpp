@@ -1591,13 +1591,21 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time) {
   mPaintingBeforeLoad += time;
 }
 
+void nsIDocument::RecordFrameConstruction(const mozilla::TimeDuration& time) {
+  if (mDocumentLoadEventComplete) {
+    return;
+  }
+  mFrameConstructionBeforeLoad += time;
+}
+
+
 void nsIDocument::MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart) {
   mDocumentLoadEventComplete = true;
   if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
     nsAutoCString spec;
     mDocumentURI->GetSpec(spec);
-    printf("%s spent %g ms painting out of %llu ms before load\n",
-           spec.get(), mPaintingBeforeLoad.ToMilliseconds(), aLoadEventStart);
+    printf("%s spent %g ms painting and %g ms frameconstructing out of %llu ms before load\n",
+           spec.get(), mPaintingBeforeLoad.ToMilliseconds(), mFrameConstructionBeforeLoad.ToMilliseconds(), aLoadEventStart);
   }
   
 }
