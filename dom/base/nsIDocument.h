@@ -3682,6 +3682,7 @@ protected:
   mozilla::TimeStamp mDisplayListQuiescentStart;
   uint32_t mLastDisplayListLength;
   mozilla::TimeDuration mFrameConstructionBeforeLoad;
+  mozilla::TimeDuration mFrameConstructionBeforeQuiescent;
   bool mDocumentLoadEventComplete;
 private:
   nsCString mContentType;

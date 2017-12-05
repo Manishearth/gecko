@@ -1632,8 +1632,8 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     nsPIDOMWindowInner* window = GetInnerWindow();
     Performance* perf = window ? window->GetPerformance() : nullptr;
     if (perf) {
-      printf("%s spent %g ms painting out of %g ms before quiescent display list\n",
-             spec.get(), mPaintingBeforeQuiescent.ToMilliseconds(),
+      printf("%s spent %g ms painting and %g ms constructing frames out of %g ms before quiescent display list\n",
+             spec.get(), mPaintingBeforeQuiescent.ToMilliseconds(), mFrameConstructionBeforeQuiescent.ToMilliseconds(),
              (mDisplayListQuiescentStart - perf->GetDOMTiming()->GetNavigationStartTimeStamp()).ToMilliseconds());
       const char* kLabels[] = {"<0.1", "<0.25", "<0.50", "<1.00", "<2.50", "<5.00", "<10.0", "<12.5", "<15.0", ">=15.0"};
       static_assert(sizeof(kLabels) / sizeof(kLabels[0]) == sizeof(mPaintDistributions) / sizeof(mPaintDistributions[0]), "incorrect labels vs. buckets");
@@ -1651,12 +1651,13 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     //printf("resetting quiescent window\n");
     mDisplayListQuiescentStart = mozilla::TimeStamp::Now();
     mPaintingBeforeQuiescent = mPaintingBeforeLoad;
+    mFrameConstructionBeforeQuiescent = mFrameConstructionBeforeLoad;
     mLastDisplayListLength = displayListLength;
   }
 }
 
 void nsIDocument::RecordFrameConstruction(const mozilla::TimeDuration& time) {
-  if (mDocumentLoadEventComplete) {
+  if (mDisplayListQuiescent && mDocumentLoadEventComplete) {
     return;
   }
   mFrameConstructionBeforeLoad += time;
@@ -1668,7 +1669,7 @@ void nsIDocument::MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart) {
   if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
     nsAutoCString spec;
     mDocumentURI->GetSpec(spec);
-    printf("%s spent %g ms painting and %g ms frameconstructing out of %llu ms before load\n",
+    printf("%s spent %g ms painting and %g ms constructing frames out of %llu ms before load\n",
            spec.get(), mPaintingBeforeLoad.ToMilliseconds(), mFrameConstructionBeforeLoad.ToMilliseconds(), aLoadEventStart);
   }
   
