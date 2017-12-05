@@ -3994,16 +3994,17 @@ nsLayoutUtils::PaintFrame(gfxContext* aRenderingContext, nsIFrame* aFrame,
     flags |= nsDisplayList::PAINT_COMPRESSED;
   }
 
+  uint32_t listLen = list.Count();
   TimeStamp paintStart = TimeStamp::Now();
   RefPtr<LayerManager> layerManager
     = list.PaintRoot(&builder, aRenderingContext, flags);
   Telemetry::AccumulateTimeDelta(Telemetry::PAINT_RASTERIZE_TIME,
                                  paintStart);
 
-  if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
+  if ((aFlags & PaintFrameFlags::PAINT_WIDGET_LAYERS) && getenv("RECORD_PAINT_BEFORE_LOAD")) {
     TimeStamp paintEnd = TimeStamp::Now();
     nsIDocument* doc = aFrame->PresContext()->Document();
-    doc->RecordPaint(paintEnd - paintStart);
+    doc->RecordPaint(paintEnd - paintStart, listLen);
   }
 
   builder.Check();

@@ -1576,19 +1576,83 @@ nsIDocument::nsIDocument()
     mServoRestyleRootDirtyBits(0),
     mThrowOnDynamicMarkupInsertionCounter(0),
     mIgnoreOpensDuringUnloadCounter(0),
-    mDocumentLoadEventComplete(false)
+    mDocumentLoadEventComplete(false),
+    mDisplayListQuiescent(false),
+    mLastDisplayListLength(0)
 {
+  memset(mPaintDistributions, 0, sizeof(mPaintDistributions));
   SetIsInDocument();
   for (auto& cnt : mIncCounters) {
     cnt = 0;
   }
 }
 
-void nsIDocument::RecordPaint(const mozilla::TimeDuration& time) {
-  if (mDocumentLoadEventComplete) {
+void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displayListLength) {
+  if (mDocumentLoadEventComplete && mDisplayListQuiescent) {
     return;
   }
   mPaintingBeforeLoad += time;
+  if (mDisplayListQuiescent) {
+    return;
+  }
+
+  double paintMs = time.ToMilliseconds();
+  uint32_t bucket;
+  if (paintMs < 0.1) {
+    bucket = 0;
+  } else if (paintMs < 0.25) {
+    bucket = 1;
+  } else if (paintMs < 0.5) {
+    bucket = 2;
+  } else if (paintMs < 1.0) {
+    bucket = 3;
+  } else if (paintMs < 2.5) {
+    bucket = 4;
+  } else if (paintMs < 5.0) {
+    bucket = 5;
+  } else if (paintMs < 10.0) {
+    bucket = 6;
+  } else if (paintMs < 12.5) {
+    bucket = 7;
+  } else if (paintMs < 15.0) {
+    bucket = 8;
+  } else {
+    bucket = 9;
+  }
+  mPaintDistributions[bucket]++;
+
+  //printf("current window is %g\n", (mozilla::TimeStamp::Now() - mDisplayListQuiescentStart).ToMilliseconds());
+  if (!mDisplayListQuiescentStart.IsNull() &&
+      (mozilla::TimeStamp::Now() - mDisplayListQuiescentStart) > mozilla::TimeDuration::FromSeconds(5.0)) {
+    mDisplayListQuiescent = true;
+
+    nsAutoCString spec;
+    mDocumentURI->GetSpec(spec);
+
+    nsPIDOMWindowInner* window = GetInnerWindow();
+    Performance* perf = window ? window->GetPerformance() : nullptr;
+    if (perf) {
+      printf("%s spent %g ms painting out of %g ms before quiescent display list\n",
+             spec.get(), mPaintingBeforeQuiescent.ToMilliseconds(),
+             (mDisplayListQuiescentStart - perf->GetDOMTiming()->GetNavigationStartTimeStamp()).ToMilliseconds());
+      const char* kLabels[] = {"<0.1", "<0.25", "<0.50", "<1.00", "<2.50", "<5.00", "<10.0", "<12.5", "<15.0", ">=15.0"};
+      static_assert(sizeof(kLabels) / sizeof(kLabels[0]) == sizeof(mPaintDistributions) / sizeof(mPaintDistributions[0]), "incorrect labels vs. buckets");
+      printf("Paint distributions (ms)\n");
+      for (uint32_t i = 0; i < sizeof(mPaintDistributions) / sizeof(mPaintDistributions[0]); i++) {
+        printf("%s: %u\n", kLabels[i], mPaintDistributions[i]);
+      }
+    } else {
+      printf("Should have printed quiescent timing, but null window or performance object.\n");
+    }
+  }
+
+  //printf("length: %d (%d)\n", displayListLength, mLastDisplayListLength);
+  if (displayListLength != mLastDisplayListLength) {
+    //printf("resetting quiescent window\n");
+    mDisplayListQuiescentStart = mozilla::TimeStamp::Now();
+    mPaintingBeforeQuiescent = mPaintingBeforeLoad;
+    mLastDisplayListLength = displayListLength;
+  }
 }
 
 void nsIDocument::RecordFrameConstruction(const mozilla::TimeDuration& time) {

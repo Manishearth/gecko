@@ -3245,7 +3245,7 @@ public:
   virtual bool AllowPaymentRequest() const = 0;
   virtual void SetAllowPaymentRequest(bool aAllowPaymentRequest) = 0;
 
-  void RecordPaint(const mozilla::TimeDuration& time);
+  void RecordPaint(const mozilla::TimeDuration& time, uint32_t displayListLength);
   void RecordFrameConstruction(const mozilla::TimeDuration& time);
   void MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart);
 
@@ -3676,6 +3676,11 @@ protected:
   nsCOMPtr<nsIChannel> mChannel;
 
   mozilla::TimeDuration mPaintingBeforeLoad;
+  mozilla::TimeDuration mPaintingBeforeQuiescent;
+  uint32_t mPaintDistributions[10];
+  bool mDisplayListQuiescent;
+  mozilla::TimeStamp mDisplayListQuiescentStart;
+  uint32_t mLastDisplayListLength;
   mozilla::TimeDuration mFrameConstructionBeforeLoad;
   bool mDocumentLoadEventComplete;
 private:
