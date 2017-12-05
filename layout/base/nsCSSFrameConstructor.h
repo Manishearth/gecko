@@ -16,6 +16,7 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/LinkedList.h"
 #include "mozilla/RestyleManager.h"
+#include "mozilla/TimeStamp.h"
 
 #include "nsCOMPtr.h"
 #include "nsILayoutHistoryState.h"
@@ -2248,9 +2249,7 @@ private:
   nsCounterManager    mCounterManager;
   // Current ProcessChildren depth.
   uint16_t            mCurrentDepth;
-#ifdef DEBUG
   uint16_t            mUpdateCount;
-#endif
   bool                mQuotesDirty : 1;
   bool                mCountersDirty : 1;
   bool                mIsDestroyingFrameTree : 1;
@@ -2259,6 +2258,11 @@ private:
   bool                mAlwaysCreateFramesForIgnorableWhitespace : 1;
 
   nsCOMPtr<nsILayoutHistoryState> mTempFrameTreeState;
+
+public:
+  mozilla::TimeStamp mMeasure;
+  void RecordFC();
+  int mMeasureDepth;
 };
 
 #endif /* nsCSSFrameConstructor_h___ */

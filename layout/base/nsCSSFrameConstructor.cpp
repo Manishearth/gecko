@@ -335,6 +335,35 @@ static int32_t FFWC_recursions=0;
 static int32_t FFWC_nextInFlows=0;
 #endif
 
+class AutoFcMeasureThingy {
+public:
+  AutoFcMeasureThingy(nsCSSFrameConstructor* fc): mFc(fc) {
+    mActuallyMeasuring = false;
+    if (fc->mMeasureDepth == 0) {
+      fc->mMeasure = TimeStamp::Now();
+      mActuallyMeasuring = true;
+    }
+    fc->mMeasureDepth++;
+  }
+  ~AutoFcMeasureThingy() {
+    mFc->mMeasureDepth--;
+    if (mActuallyMeasuring) {
+      MOZ_ASSERT(fc->mMeasureDepth == 0);
+
+      mFc->RecordFC();
+    }
+  }
+  bool mActuallyMeasuring;
+  nsCSSFrameConstructor* mFc;
+};
+
+void nsCSSFrameConstructor::RecordFC() {
+  TimeStamp fcEnd = TimeStamp::Now();
+  if (mPresShell)
+    if (auto pc = mPresShell->GetPresContext())
+      pc->Document()->RecordFrameConstruction(fcEnd - mMeasure);  
+}
+
 // Wrapper class to handle stack-construction a TreeMatchContext only if we're
 // using the Gecko style system.
 class MOZ_STACK_CLASS TreeMatchContextHolder
@@ -1611,14 +1640,13 @@ nsCSSFrameConstructor::nsCSSFrameConstructor(nsIDocument* aDocument,
   , mFirstFreeFCItem(nullptr)
   , mFCItemsInUse(0)
   , mCurrentDepth(0)
-#ifdef DEBUG
   , mUpdateCount(0)
-#endif
   , mQuotesDirty(false)
   , mCountersDirty(false)
   , mIsDestroyingFrameTree(false)
   , mHasRootAbsPosContainingBlock(false)
   , mAlwaysCreateFramesForIgnorableWhitespace(false)
+  , mMeasureDepth(0)
 {
 #ifdef DEBUG
   static bool gFirstTime = true;
@@ -1674,6 +1702,7 @@ nsCSSFrameConstructor::nsCSSFrameConstructor(nsIDocument* aDocument,
 void
 nsCSSFrameConstructor::NotifyDestroyingFrame(nsIFrame* aFrame)
 {
+  AutoFcMeasureThingy measure(this);
   NS_PRECONDITION(mUpdateCount != 0,
                   "Should be in an update while destroying frames");
 
@@ -1741,6 +1770,7 @@ nsCSSFrameConstructor::CreateGeneratedContent(nsFrameConstructorState& aState,
                                               nsStyleContext* aStyleContext,
                                               uint32_t        aContentIndex)
 {
+  AutoFcMeasureThingy measure(this);
   // Get the content value
   const nsStyleContentData &data =
     aStyleContext->StyleContent()->ContentAt(aContentIndex);
@@ -1903,6 +1933,7 @@ nsCSSFrameConstructor::CreateGeneratedContentItem(nsFrameConstructorState& aStat
                                                   CSSPseudoElementType aPseudoElement,
                                                   FrameConstructionItemList& aItems)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(aPseudoElement == CSSPseudoElementType::before ||
              aPseudoElement == CSSPseudoElementType::after,
              "unexpected aPseudoElement");
@@ -2168,6 +2199,7 @@ nsCSSFrameConstructor::ConstructTable(nsFrameConstructorState& aState,
                                       const nsStyleDisplay*    aDisplay,
                                       nsFrameItems&            aFrameItems)
 {
+  AutoFcMeasureThingy measure(this);
   NS_PRECONDITION(aDisplay->mDisplay == StyleDisplay::Table ||
                   aDisplay->mDisplay == StyleDisplay::InlineTable,
                   "Unexpected call");
@@ -2816,6 +2848,7 @@ nsCSSFrameConstructor::ConstructDocElementFrame(Element*                 aDocEle
 nsIFrame*
 nsCSSFrameConstructor::ConstructRootFrame()
 {
+  AutoFcMeasureThingy measure(this);
   AUTO_LAYOUT_PHASE_ENTRY_POINT(mPresShell->GetPresContext(), FrameC);
 
   StyleSetHandle styleSet = mPresShell->StyleSet();
@@ -5868,6 +5901,7 @@ nsCSSFrameConstructor::AddFrameConstructionItemsInternal(nsFrameConstructorState
                                                          nsTArray<nsIAnonymousContentCreator::ContentInfo>* aAnonChildren,
                                                          FrameConstructionItemList& aItems)
 {
+  AutoFcMeasureThingy measure(this);
   NS_PRECONDITION(aContent->IsNodeOfType(nsINode::eTEXT) ||
                   aContent->IsElement(),
                   "Shouldn't get anything else here!");
@@ -6364,6 +6398,7 @@ IsRootBoxFrame(nsIFrame *aFrame)
 void
 nsCSSFrameConstructor::ReconstructDocElementHierarchy(InsertionKind aInsertionKind)
 {
+  AutoFcMeasureThingy measure(this);
   Element* rootElement = mDocument->GetRootElement();
   if (!rootElement) {
     /* nothing to do */
@@ -7298,6 +7333,7 @@ nsCSSFrameConstructor::CreateNeededFrames(
     nsIContent* aContent,
     TreeMatchContext& aTreeMatchContext)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(!aContent->IsStyledByServo());
   NS_ASSERTION(!aContent->HasFlag(NODE_NEEDS_FRAME),
     "shouldn't get here with a content node that has needs frame bit set");
@@ -7529,6 +7565,7 @@ nsCSSFrameConstructor::ContentAppended(nsIContent* aContainer,
                                        InsertionKind aInsertionKind,
                                        TreeMatchContext* aProvidedTreeMatchContext)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(!aProvidedTreeMatchContext ||
              aInsertionKind == InsertionKind::Sync);
   MOZ_ASSERT(aInsertionKind == InsertionKind::Sync ||
@@ -7896,6 +7933,7 @@ nsCSSFrameConstructor::ContentInserted(nsIContent* aContainer,
                                        nsILayoutHistoryState* aFrameState,
                                        InsertionKind aInsertionKind)
 {
+  AutoFcMeasureThingy measure(this);
   ContentRangeInserted(aContainer,
                        aChild,
                        aChild->GetNextSibling(),
@@ -7929,6 +7967,7 @@ nsCSSFrameConstructor::ContentRangeInserted(nsIContent* aContainer,
                                             InsertionKind aInsertionKind,
                                             TreeMatchContext* aProvidedTreeMatchContext)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(!aProvidedTreeMatchContext ||
              aInsertionKind == InsertionKind::Sync);
   MOZ_ASSERT(aInsertionKind == InsertionKind::Sync ||
@@ -8436,6 +8475,7 @@ nsCSSFrameConstructor::ContentRemoved(nsIContent* aContainer,
                                       nsIContent* aOldNextSibling,
                                       RemoveFlags aFlags)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(aChild);
   AUTO_LAYOUT_PHASE_ENTRY_POINT(mPresShell->GetPresContext(), FrameC);
   NS_PRECONDITION(mUpdateCount != 0,
@@ -8803,6 +8843,7 @@ bool
 nsCSSFrameConstructor::EnsureFrameForTextNodeIsCreatedAfterFlush(
   nsGenericDOMDataNode* aContent)
 {
+  AutoFcMeasureThingy measure(this);
   if (!aContent->HasFlag(NS_CREATE_FRAME_IF_NON_WHITESPACE)) {
     return false;
   }
@@ -8830,6 +8871,7 @@ void
 nsCSSFrameConstructor::CharacterDataChanged(nsIContent* aContent,
                                             CharacterDataChangeInfo* aInfo)
 {
+  AutoFcMeasureThingy measure(this);
   AUTO_LAYOUT_PHASE_ENTRY_POINT(mPresShell->GetPresContext(), FrameC);
 
   if ((aContent->HasFlag(NS_CREATE_FRAME_IF_NON_WHITESPACE) &&
@@ -8901,24 +8943,21 @@ nsCSSFrameConstructor::BeginUpdate() {
   if (rootPresContext) {
     rootPresContext->IncrementDOMGeneration();
   }
-
-#ifdef DEBUG
+  
   ++mUpdateCount;
-#endif
 }
 
 void
 nsCSSFrameConstructor::EndUpdate()
 {
-#ifdef DEBUG
   NS_ASSERTION(mUpdateCount, "Negative mUpdateCount!");
   --mUpdateCount;
-#endif
 }
 
 void
 nsCSSFrameConstructor::RecalcQuotesAndCounters()
 {
+  AutoFcMeasureThingy measure(this);
   nsAutoScriptBlocker scriptBlocker;
 
   if (mQuotesDirty) {
@@ -8938,6 +8977,7 @@ nsCSSFrameConstructor::RecalcQuotesAndCounters()
 void
 nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
 {
+  AutoFcMeasureThingy measure(this);
   NS_PRECONDITION(mUpdateCount != 0, "Should be in an update");
   mCounterManager.SetAllDirty();
   CountersDirty();
@@ -8946,6 +8986,7 @@ nsCSSFrameConstructor::NotifyCounterStylesAreDirty()
 void
 nsCSSFrameConstructor::WillDestroyFrameTree()
 {
+  AutoFcMeasureThingy measure(this);
 #if defined(DEBUG_dbaron_off)
   mCounterManager.Dump();
 #endif
@@ -9101,6 +9142,7 @@ nsCSSFrameConstructor::CreateContinuingFrame(nsPresContext*    aPresContext,
                                              nsContainerFrame* aParentFrame,
                                              bool              aIsFluid)
 {
+  AutoFcMeasureThingy measure(this);
   nsIPresShell*              shell = aPresContext->PresShell();
   nsStyleContext*            styleContext = aFrame->StyleContext();
   nsIFrame*                  newFrame = nullptr;
@@ -9302,6 +9344,7 @@ nsCSSFrameConstructor::CreateContinuingFrame(nsPresContext*    aPresContext,
 nsresult
 nsCSSFrameConstructor::ReplicateFixedFrames(nsPageContentFrame* aParentFrame)
 {
+  AutoFcMeasureThingy measure(this);
   // Now deal with fixed-pos things....  They should appear on all pages,
   // so we want to move over the placeholders when processing the child
   // of the pageContentFrame.
@@ -9382,6 +9425,7 @@ nsCSSFrameConstructor::InsertionPoint
 nsCSSFrameConstructor::GetInsertionPoint(nsIContent* aContainer,
                                          nsIContent* aChild)
 {
+  AutoFcMeasureThingy measure(this);
   nsBindingManager* bindingManager = mDocument->BindingManager();
 
   nsIContent* insertionElement;
@@ -9483,6 +9527,7 @@ DefinitelyEqualURIsAndPrincipal(mozilla::css::URLValue* aURI1,
 nsStyleContext*
 nsCSSFrameConstructor::MaybeRecreateFramesForElement(Element* aElement)
 {
+  AutoFcMeasureThingy measure(this);
   RefPtr<nsStyleContext> oldContext = GetDisplayNoneStyleFor(aElement);
   StyleDisplay oldDisplay = StyleDisplay::None;
   if (!oldContext) {
@@ -9802,6 +9847,7 @@ void
 nsCSSFrameConstructor::RecreateFramesForContent(nsIContent* aContent,
                                                 InsertionKind aInsertionKind)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(aContent);
 
   // If there is no document, we don't want to recreate frames for it.  (You
@@ -9924,6 +9970,7 @@ nsCSSFrameConstructor::RecreateFramesForContent(nsIContent* aContent,
 bool
 nsCSSFrameConstructor::DestroyFramesFor(Element* aElement)
 {
+  AutoFcMeasureThingy measure(this);
   MOZ_ASSERT(aElement && aElement->GetParentNode());
 
   nsIContent* nextSibling =
@@ -11999,6 +12046,7 @@ nsCSSFrameConstructor::CreateListBoxContent(nsContainerFrame*      aParentFrame,
                                             nsIFrame**             aNewFrame,
                                             bool                   aIsAppend)
 {
+  AutoFcMeasureThingy measure(this);
 #ifdef MOZ_XUL
   // Construct a new frame
   if (nullptr != aParentFrame) {
@@ -12879,6 +12927,7 @@ nsCSSFrameConstructor::ReframeContainingBlock(nsIFrame* aFrame)
 void
 nsCSSFrameConstructor::GenerateChildFrames(nsContainerFrame* aFrame)
 {
+  AutoFcMeasureThingy measure(this);
   {
     nsAutoScriptBlocker scriptBlocker;
     BeginUpdate();
