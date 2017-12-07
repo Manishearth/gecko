@@ -361,7 +361,22 @@ void nsCSSFrameConstructor::RecordFC() {
   TimeStamp fcEnd = TimeStamp::Now();
   if (mPresShell)
     if (auto pc = mPresShell->GetPresContext())
-      pc->Document()->RecordFrameConstruction(fcEnd - mMeasure);  
+      pc->Document()->RecordFrameConstruction(fcEnd - mMeasure, mStyleTime);
+  mStyleTime = TimeDuration();
+}
+
+void nsCSSFrameConstructor::EnterStyle() {
+  mStyleStart = TimeStamp::Now();
+}
+
+void nsCSSFrameConstructor::ExitStyle() {
+  if (mPresShell && mPresShell->GetPresContext()) {
+    if (mMeasureDepth > 0) {
+      mStyleTime += TimeStamp::Now() - mStyleStart;
+    }
+    else
+      NS_ASSERTION(true, "wat");
+  }
 }
 
 // Wrapper class to handle stack-construction a TreeMatchContext only if we're
@@ -1942,6 +1957,7 @@ nsCSSFrameConstructor::CreateGeneratedContentItem(nsFrameConstructorState& aStat
 
   StyleSetHandle styleSet = mPresShell->StyleSet();
 
+  EnterStyle();
   // Probe for the existence of the pseudo-element
   RefPtr<nsStyleContext> pseudoStyleContext;
   pseudoStyleContext =
@@ -1949,6 +1965,7 @@ nsCSSFrameConstructor::CreateGeneratedContentItem(nsFrameConstructorState& aStat
                                       aPseudoElement,
                                       aStyleContext,
                                       aState.mTreeMatchContext);
+  ExitStyle();
   if (!pseudoStyleContext)
     return;
 
@@ -2002,9 +2019,11 @@ nsCSSFrameConstructor::CreateGeneratedContentItem(nsFrameConstructorState& aStat
       // If animations are involved, we avoid the SetExplicitStyle optimization
       // above. We need to grab style with animations from the pseudo element
       // and replace old one.
+      EnterStyle();
       mPresShell->StyleSet()->AsServo()->StyleNewSubtree(container);
       pseudoStyleContext =
         styleSet->AsServo()->ResolveServoStyle(container);
+      ExitStyle();
     }
   } else {
     mozilla::GeckoRestyleManager* geckoRM = RestyleManager()->AsGecko();
@@ -2852,11 +2871,12 @@ nsCSSFrameConstructor::ConstructRootFrame()
   AUTO_LAYOUT_PHASE_ENTRY_POINT(mPresShell->GetPresContext(), FrameC);
 
   StyleSetHandle styleSet = mPresShell->StyleSet();
-
+  EnterStyle();
   // --------- BUILD VIEWPORT -----------
   RefPtr<nsStyleContext> viewportPseudoStyle =
     styleSet->ResolveInheritingAnonymousBoxStyle(nsCSSAnonBoxes::viewport,
                                                  nullptr);
+  ExitStyle();
   ViewportFrame* viewportFrame =
     NS_NewViewportFrame(mPresShell, viewportPseudoStyle);
 
@@ -2891,6 +2911,7 @@ nsCSSFrameConstructor::SetUpDocElementContainingBlock(nsIContent* aDocElement)
   NS_PRECONDITION(aDocElement->GetUncomposedDoc()->GetRootElement() ==
                   aDocElement, "Not the root of the document?");
 
+  AutoFcMeasureThingy(this);
   /*
     how the root frame hierarchy should look
 
@@ -3022,9 +3043,11 @@ nsCSSFrameConstructor::SetUpDocElementContainingBlock(nsIContent* aDocElement)
   StyleSetHandle styleSet = mPresShell->StyleSet();
   // If paginated, make sure we don't put scrollbars in
   if (!isScrollable) {
+    EnterStyle();
     rootPseudoStyle =
       styleSet->ResolveInheritingAnonymousBoxStyle(rootPseudo,
                                                    viewportPseudoStyle);
+    ExitStyle();
   } else {
       if (rootPseudo == nsCSSAnonBoxes::canvas) {
         rootPseudo = nsCSSAnonBoxes::scrolledCanvas;
@@ -3041,9 +3064,11 @@ nsCSSFrameConstructor::SetUpDocElementContainingBlock(nsIContent* aDocElement)
 
       // resolve a context for the scrollframe
       RefPtr<nsStyleContext>  styleContext;
+      EnterStyle();
       styleContext =
         styleSet->ResolveInheritingAnonymousBoxStyle(nsCSSAnonBoxes::viewportScroll,
                                                      viewportPseudoStyle);
+      ExitStyle();
 
       // Note that the viewport scrollframe is always built with
       // overflow:auto style. This forces the scroll frame to create
@@ -3123,13 +3148,16 @@ nsCSSFrameConstructor::ConstructPageFrame(nsIPresShell*  aPresShell,
                                           nsIFrame*      aPrevPageFrame,
                                           nsContainerFrame*& aCanvasFrame)
 {
+  AutoFcMeasureThingy(this);
   nsStyleContext* parentStyleContext = aParentFrame->StyleContext();
   StyleSetHandle styleSet = aPresShell->StyleSet();
 
   RefPtr<nsStyleContext> pagePseudoStyle;
+  EnterStyle();
   pagePseudoStyle =
     styleSet->ResolveInheritingAnonymousBoxStyle(nsCSSAnonBoxes::page,
                                                  parentStyleContext);
+  ExitStyle();
 
   nsContainerFrame* pageFrame = NS_NewPageFrame(aPresShell, pagePseudoStyle);
 
@@ -3138,9 +3166,11 @@ nsCSSFrameConstructor::ConstructPageFrame(nsIPresShell*  aPresShell,
   pageFrame->Init(nullptr, aParentFrame, aPrevPageFrame);
 
   RefPtr<nsStyleContext> pageContentPseudoStyle;
+  EnterStyle();
   pageContentPseudoStyle =
     styleSet->ResolveInheritingAnonymousBoxStyle(nsCSSAnonBoxes::pageContent,
                                                  pagePseudoStyle);
+  ExitStyle();
 
   nsContainerFrame* pageContentFrame =
     NS_NewPageContentFrame(aPresShell, pageContentPseudoStyle);
@@ -3162,9 +3192,11 @@ nsCSSFrameConstructor::ConstructPageFrame(nsIPresShell*  aPresShell,
   pageContentFrame->MarkAsAbsoluteContainingBlock();
 
   RefPtr<nsStyleContext> canvasPseudoStyle;
+  EnterStyle();
   canvasPseudoStyle =
     styleSet->ResolveInheritingAnonymousBoxStyle(nsCSSAnonBoxes::canvas,
                                                  pageContentPseudoStyle);
+  ExitStyle();
 
   aCanvasFrame = NS_NewCanvasFrame(aPresShell, canvasPseudoStyle);
 
@@ -4359,6 +4391,7 @@ nsCSSFrameConstructor::GetAnonymousContent(nsIContent* aParent,
                                            nsIFrame* aParentFrame,
                                            nsTArray<nsIAnonymousContentCreator::ContentInfo>& aContent)
 {
+  AutoFcMeasureThingy(this);
   nsIAnonymousContentCreator* creator = do_QueryFrame(aParentFrame);
   if (!creator)
     return NS_OK;
@@ -4428,7 +4461,9 @@ nsCSSFrameConstructor::GetAnonymousContent(nsIContent* aParent,
     // Eagerly compute styles for the anonymous content tree.
     for (auto& info : aContent) {
       if (info.mContent->IsElement()) {
+        EnterStyle();
         styleSet->StyleNewSubtree(info.mContent->AsElement());
+        ExitStyle();
       }
     }
   }
@@ -4708,6 +4743,7 @@ nsCSSFrameConstructor::BeginBuildingScrollFrame(nsFrameConstructorState& aState,
                                                 bool                     aIsRoot,
                                                 nsContainerFrame*&       aNewFrame)
 {
+  AutoFcMeasureThingy(this);
   nsContainerFrame* gfxScrollFrame = aNewFrame;
 
   nsFrameItems anonymousItems;
@@ -4760,8 +4796,10 @@ nsCSSFrameConstructor::BeginBuildingScrollFrame(nsFrameConstructorState& aState,
 
   // we used the style that was passed in. So resolve another one.
   StyleSetHandle styleSet = mPresShell->StyleSet();
+  EnterStyle();
   RefPtr<nsStyleContext> scrolledChildStyle =
     styleSet->ResolveInheritingAnonymousBoxStyle(aScrolledPseudo, contentStyle);
+  ExitStyle();
 
   if (gfxScrollFrame) {
      gfxScrollFrame->SetInitialChildList(kPrincipalList, anonymousItems);
@@ -5213,6 +5251,7 @@ nsCSSFrameConstructor::ResolveStyleContext(nsStyleContext* aParentStyleContext,
                                            nsFrameConstructorState* aState,
                                            Element* aOriginatingElementOrNull)
 {
+  AutoFcMeasureThingy(this);
   StyleSetHandle styleSet = mPresShell->StyleSet();
   aContent->OwnerDoc()->FlushPendingLinkUpdates();
 
@@ -5221,6 +5260,7 @@ nsCSSFrameConstructor::ResolveStyleContext(nsStyleContext* aParentStyleContext,
     auto pseudoType = aContent->AsElement()->GetPseudoElementType();
     if (pseudoType == CSSPseudoElementType::NotPseudo) {
       MOZ_ASSERT(!aOriginatingElementOrNull);
+      EnterStyle();
       if (aState) {
         result = styleSet->ResolveStyleFor(aContent->AsElement(),
                                            aParentStyleContext,
@@ -5231,6 +5271,7 @@ nsCSSFrameConstructor::ResolveStyleContext(nsStyleContext* aParentStyleContext,
                                            aParentStyleContext,
                                            LazyComputeBehavior::Assert);
       }
+      ExitStyle();
     } else {
       MOZ_ASSERT(aContent->IsInNativeAnonymousSubtree());
       if (!aOriginatingElementOrNull) {
@@ -5245,17 +5286,21 @@ nsCSSFrameConstructor::ResolveStyleContext(nsStyleContext* aParentStyleContext,
           nsContentUtils::GetClosestNonNativeAnonymousAncestor(aContent->AsElement());
       }
       MOZ_ASSERT(aOriginatingElementOrNull);
+      EnterStyle();
       result = styleSet->ResolvePseudoElementStyle(aOriginatingElementOrNull,
                                                    pseudoType,
                                                    aParentStyleContext,
                                                    aContent->AsElement());
+      ExitStyle();
     }
   } else {
     MOZ_ASSERT(!aOriginatingElementOrNull);
     NS_ASSERTION(aContent->IsNodeOfType(nsINode::eTEXT),
                  "shouldn't waste time creating style contexts for "
                  "comments and processing instructions");
+    EnterStyle();
     result = styleSet->ResolveStyleForText(aContent, aParentStyleContext);
+    ExitStyle();
   }
 
   // ServoRestyleManager does not handle transitions yet, and when it does
@@ -5297,6 +5342,7 @@ nsCSSFrameConstructor::FlushAccumulatedBlock(nsFrameConstructorState& aState,
     // Nothing to do
     return;
   }
+  AutoFcMeasureThingy(this);
 
   nsAtom* anonPseudo = nsCSSAnonBoxes::mozMathMLAnonymousBlock;
 
@@ -5305,8 +5351,10 @@ nsCSSFrameConstructor::FlushAccumulatedBlock(nsFrameConstructorState& aState,
                                      anonPseudo)->StyleContext();
   StyleSetHandle styleSet = mPresShell->StyleSet();
   RefPtr<nsStyleContext> blockContext;
+  EnterStyle();
   blockContext = styleSet->
     ResolveInheritingAnonymousBoxStyle(anonPseudo, parentContext);
+  ExitStyle();
 
   // then, create a block frame that will wrap the child frames. Make it a
   // MathML frame so that Get(Absolute/Float)ContainingBlockFor know that this
@@ -7542,6 +7590,7 @@ void
 nsCSSFrameConstructor::StyleNewChildRange(nsIContent* aStartChild,
                                           nsIContent* aEndChild)
 {
+  AutoFcMeasureThingy(this);
   ServoStyleSet* styleSet = mPresShell->StyleSet()->AsServo();
 
   for (nsIContent* child = aStartChild; child != aEndChild;
@@ -7553,7 +7602,9 @@ nsCSSFrameConstructor::StyleNewChildRange(nsIContent* aStartChild,
       if (MOZ_LIKELY(parent) && parent->HasServoData()) {
         MOZ_ASSERT(IsFlattenedTreeChild(parent, child),
                    "GetFlattenedTreeParent and ChildIterator don't agree, fix this!");
+        EnterStyle();
         styleSet->StyleNewSubtree(child->AsElement());
+        ExitStyle();
       }
     }
   }
@@ -11543,7 +11594,7 @@ nsCSSFrameConstructor::CreateFloatingLetterFrame(
   nsFrameItems& aResult)
 {
   MOZ_ASSERT(aParentStyleContext);
-
+  AutoFcMeasureThingy(this);
   nsFirstLetterFrame* letterFrame =
     NS_NewFirstLetterFrame(mPresShell, aStyleContext);
   // We don't want to use a text content for a non-text frame (because we want
@@ -11559,8 +11610,10 @@ nsCSSFrameConstructor::CreateFloatingLetterFrame(
   // letter frame and will have the float property set on it; the text
   // frame shouldn't have that set).
   StyleSetHandle styleSet = mPresShell->StyleSet();
+  EnterStyle();
   RefPtr<nsStyleContext> textSC = styleSet->
     ResolveStyleForText(aTextContent, aStyleContext);
+  ExitStyle();
   aTextFrame->SetStyleContextWithoutNotification(textSC);
   InitAndRestoreFrame(aState, aTextContent, letterFrame, aTextFrame);
 
@@ -11575,8 +11628,10 @@ nsCSSFrameConstructor::CreateFloatingLetterFrame(
     // Create continuation
     nextTextFrame =
       CreateContinuingFrame(aState.mPresContext, aTextFrame, aParentFrame);
+    EnterStyle();
     RefPtr<nsStyleContext> newSC = styleSet->
       ResolveStyleForText(aTextContent, aParentStyleContext);
+    ExitStyle();
     nextTextFrame->SetStyleContext(newSC);
   }
 

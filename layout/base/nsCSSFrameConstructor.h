@@ -2261,6 +2261,10 @@ private:
 
 public:
   mozilla::TimeStamp mMeasure;
+  mozilla::TimeDuration mStyleTime;
+  mozilla::TimeStamp mStyleStart;
+  void EnterStyle();
+  void ExitStyle();
   void RecordFC();
   int mMeasureDepth;
 };

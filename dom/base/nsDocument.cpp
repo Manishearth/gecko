@@ -1632,8 +1632,9 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     nsPIDOMWindowInner* window = GetInnerWindow();
     Performance* perf = window ? window->GetPerformance() : nullptr;
     if (perf) {
-      printf("%s: \t [quiescent]\t painting(%g ms)\t fc(%g ms) \t layout(%g ms) \t total(%g ms)\n",
+      printf("%s: \t [quiescent]\t painting(%g ms)\t fc(%g ms) \t fc-style(%g ms) \t layout(%g ms) \t total(%g ms)\n",
              spec.get(), mPaintingBeforeQuiescent.ToMilliseconds(), mFrameConstructionBeforeQuiescent.ToMilliseconds(),
+             mFrameConstructionStyleBeforeQuiescent.ToMilliseconds(),
              mLayoutBeforeQuiescent.ToMilliseconds(),
              (mDisplayListQuiescentStart - perf->GetDOMTiming()->GetNavigationStartTimeStamp()).ToMilliseconds());
       const char* kLabels[] = {"<0.1", "<0.25", "<0.50", "<1.00", "<2.50", "<5.00", "<10.0", "<12.5", "<15.0", ">=15.0"};
@@ -1653,16 +1654,18 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     mDisplayListQuiescentStart = mozilla::TimeStamp::Now();
     mPaintingBeforeQuiescent = mPaintingBeforeLoad;
     mFrameConstructionBeforeQuiescent = mFrameConstructionBeforeLoad;
+    mFrameConstructionStyleBeforeQuiescent = mFrameConstructionStyleBeforeLoad;
     mLayoutBeforeQuiescent = mLayoutBeforeLoad;
     mLastDisplayListLength = displayListLength;
   }
 }
 
-void nsIDocument::RecordFrameConstruction(const mozilla::TimeDuration& time) {
+void nsIDocument::RecordFrameConstruction(const mozilla::TimeDuration& time, const mozilla::TimeDuration& timeStyle) {
   if (mDisplayListQuiescent && mDocumentLoadEventComplete) {
     return;
   }
-  mFrameConstructionBeforeLoad += time;
+  mFrameConstructionBeforeLoad += time - timeStyle;
+  mFrameConstructionStyleBeforeLoad += timeStyle;
 }
 
 void nsIDocument::RecordLayout(const mozilla::TimeDuration& time) {
@@ -1677,8 +1680,9 @@ void nsIDocument::MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart) {
   if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
     nsAutoCString spec;
     mDocumentURI->GetSpec(spec);
-    printf("%s: \t [  load  ]\t painting(%g ms)\t fc(%g ms) \t layout(%g ms) \t total(%llu ms)\n",
-           spec.get(), mPaintingBeforeLoad.ToMilliseconds(), mFrameConstructionBeforeLoad.ToMilliseconds(), mLayoutBeforeLoad.ToMilliseconds(), aLoadEventStart);
+    printf("%s: \t [  load   ]\t painting(%g ms)\t fc(%g ms) \t fc-style(%g ms) \t layout(%g ms) \t total(%llu ms)\n",
+           spec.get(), mPaintingBeforeLoad.ToMilliseconds(), mFrameConstructionBeforeLoad.ToMilliseconds(),
+           mFrameConstructionStyleBeforeLoad.ToMilliseconds(), mLayoutBeforeLoad.ToMilliseconds(), aLoadEventStart);
   }
   
 }
