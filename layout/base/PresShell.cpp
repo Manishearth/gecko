@@ -9244,14 +9244,17 @@ PresShell::ProcessReflowCommands(bool aInterruptible)
     UnsuppressAndInvalidate();
   }
 
+  TimeDuration elapsed = TimeStamp::Now() - timerStart;
   if (mDocument->GetRootElement()) {
-    TimeDuration elapsed = TimeStamp::Now() - timerStart;
     int32_t intElapsed = int32_t(elapsed.ToMilliseconds());
 
     if (intElapsed > NS_LONG_REFLOW_TIME_MS) {
       Telemetry::Accumulate(Telemetry::LONG_REFLOW_INTERRUPTIBLE,
                             aInterruptible ? 1 : 0);
     }
+  }
+  if (mDocument) {
+    mDocument->RecordLayout(elapsed);
   }
 
   return !interrupted;
