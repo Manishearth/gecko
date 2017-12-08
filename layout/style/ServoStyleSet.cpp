@@ -40,6 +40,24 @@ using namespace mozilla::dom;
 
 ServoStyleSet* ServoStyleSet::sInServoTraversal = nullptr;
 
+class AutoStyleMeasureThingy {
+public:
+  AutoStyleMeasureThingy(ServoStyleSet* s): mStyle(s) {
+    mStart = TimeStamp::Now();
+  }
+  ~AutoStyleMeasureThingy() {
+    mStyle->RecordStyle(TimeStamp::Now() - mStart);
+  }
+  TimeStamp mStart;
+  ServoStyleSet* mStyle;
+};
+
+void
+ServoStyleSet::RecordStyle(const mozilla::TimeDuration& time) {
+  if (mPresContext)
+    mPresContext->Document()->RecordStyle(time);
+}
+
 #ifdef DEBUG
 bool
 ServoStyleSet::IsCurrentThreadInServoTraversal()
@@ -340,6 +358,7 @@ ServoStyleSet::ResolveStyleFor(Element* aElement,
                                ServoStyleContext* aParentContext,
                                LazyComputeBehavior aMayCompute)
 {
+  AutoStyleMeasureThingy measure(this);
   if (aMayCompute == LazyComputeBehavior::Allow) {
     PreTraverseSync();
     return ResolveStyleLazilyInternal(
@@ -563,6 +582,8 @@ ServoStyleSet::ResolveStyleLazily(Element* aElement,
                                   StyleRuleInclusion aRuleInclusion)
 {
   PreTraverseSync();
+
+  AutoStyleMeasureThingy measure(this);
 
   return ResolveStyleLazilyInternal(aElement, aPseudoType,
                                     aRuleInclusion);
@@ -914,6 +935,8 @@ ServoStyleSet::StyleDocument(ServoTraversalFlags aFlags)
   }
 
   PreTraverse(aFlags);
+
+  AutoStyleMeasureThingy measure(this);
   AutoPrepareTraversal guard(this);
   const SnapshotTable& snapshots = Snapshots();
 

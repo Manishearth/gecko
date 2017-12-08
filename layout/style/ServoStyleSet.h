@@ -18,6 +18,7 @@
 #include "mozilla/ServoUtils.h"
 #include "mozilla/StyleSheetInlines.h"
 #include "mozilla/SheetType.h"
+#include "mozilla/TimeStamp.h"
 #include "mozilla/UniquePtr.h"
 #include "MainThreadUtils.h"
 #include "nsCSSPseudoElements.h"
@@ -503,6 +504,8 @@ public:
 
   bool IsMaster() const { return mKind == Kind::Master; }
   bool IsForXBL() const { return mKind == Kind::ForXBL; }
+
+  void RecordStyle(const mozilla::TimeDuration& time);
 
 private:
   friend class AutoSetInServoTraversal;

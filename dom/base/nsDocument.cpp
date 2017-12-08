@@ -1632,10 +1632,10 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     nsPIDOMWindowInner* window = GetInnerWindow();
     Performance* perf = window ? window->GetPerformance() : nullptr;
     if (perf) {
-      printf("%s: \t [quiescent]\t painting(%g ms)\t fc(%g ms) \t fc-style(%g ms) \t layout(%g ms) \t total(%g ms)\n",
+      printf("%s: \t [quiescent]\t painting(%g ms)\t fc(%g ms) \t style(%g ms) \t layout(%g ms) \t fc-style(%g ms) \t total(%g ms)\n",
              spec.get(), mPaintingBeforeQuiescent.ToMilliseconds(), mFrameConstructionBeforeQuiescent.ToMilliseconds(),
-             mFrameConstructionStyleBeforeQuiescent.ToMilliseconds(),
-             mLayoutBeforeQuiescent.ToMilliseconds(),
+             mStyleBeforeQuiescent.ToMilliseconds(),
+             mLayoutBeforeQuiescent.ToMilliseconds(), mFrameConstructionStyleBeforeQuiescent.ToMilliseconds(),
              (mDisplayListQuiescentStart - perf->GetDOMTiming()->GetNavigationStartTimeStamp()).ToMilliseconds());
       const char* kLabels[] = {"<0.1", "<0.25", "<0.50", "<1.00", "<2.50", "<5.00", "<10.0", "<12.5", "<15.0", ">=15.0"};
       static_assert(sizeof(kLabels) / sizeof(kLabels[0]) == sizeof(mPaintDistributions) / sizeof(mPaintDistributions[0]), "incorrect labels vs. buckets");
@@ -1656,6 +1656,7 @@ void nsIDocument::RecordPaint(const mozilla::TimeDuration& time, uint32_t displa
     mFrameConstructionBeforeQuiescent = mFrameConstructionBeforeLoad;
     mFrameConstructionStyleBeforeQuiescent = mFrameConstructionStyleBeforeLoad;
     mLayoutBeforeQuiescent = mLayoutBeforeLoad;
+    mStyleBeforeQuiescent = mStyleBeforeLoad;
     mLastDisplayListLength = displayListLength;
   }
 }
@@ -1675,14 +1676,22 @@ void nsIDocument::RecordLayout(const mozilla::TimeDuration& time) {
   mLayoutBeforeLoad += time;
 }
 
+void nsIDocument::RecordStyle(const mozilla::TimeDuration& time) {
+  if (mDisplayListQuiescent && mDocumentLoadEventComplete) {
+    return;
+  }
+  mStyleBeforeLoad += time;
+}
+
 void nsIDocument::MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart) {
   mDocumentLoadEventComplete = true;
   if (getenv("RECORD_PAINT_BEFORE_LOAD")) {
     nsAutoCString spec;
     mDocumentURI->GetSpec(spec);
-    printf("%s: \t [  load   ]\t painting(%g ms)\t fc(%g ms) \t fc-style(%g ms) \t layout(%g ms) \t total(%llu ms)\n",
+    printf("%s: \t [  load   ]\t painting(%g ms)\t fc(%g ms) \t style(%g ms) \t layout(%g ms) \t fc-style(%g ms) \t total(%llu ms)\n",
            spec.get(), mPaintingBeforeLoad.ToMilliseconds(), mFrameConstructionBeforeLoad.ToMilliseconds(),
-           mFrameConstructionStyleBeforeLoad.ToMilliseconds(), mLayoutBeforeLoad.ToMilliseconds(), aLoadEventStart);
+           mStyleBeforeLoad.ToMilliseconds(), mLayoutBeforeLoad.ToMilliseconds(),
+           mFrameConstructionStyleBeforeLoad.ToMilliseconds(), aLoadEventStart);
   }
   
 }

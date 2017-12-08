@@ -3247,6 +3247,7 @@ public:
 
   void RecordPaint(const mozilla::TimeDuration& time, uint32_t displayListLength);
   void RecordFrameConstruction(const mozilla::TimeDuration& time, const mozilla::TimeDuration& timeStyle);
+  void RecordStyle(const mozilla::TimeDuration& time);
   void RecordLayout(const mozilla::TimeDuration& time);
   void MarkLoadEventComplete(DOMTimeMilliSec aLoadEventStart);
 
@@ -3688,6 +3689,8 @@ protected:
   mozilla::TimeDuration mFrameConstructionStyleBeforeQuiescent;
   mozilla::TimeDuration mLayoutBeforeLoad;
   mozilla::TimeDuration mLayoutBeforeQuiescent;
+  mozilla::TimeDuration mStyleBeforeLoad;
+  mozilla::TimeDuration mStyleBeforeQuiescent;
   bool mDocumentLoadEventComplete;
 private:
   nsCString mContentType;
