@@ -10,7 +10,7 @@
  * liability, trademark and document use rules apply.
  */
 
-// [Constructor(optional MediaTrackConstraints audioConstraints)]
+// [Constructor(optional MediaTrackConstraints audioConstraints), LogCalls]
 interface AudioStreamTrack : MediaStreamTrack {
 //    static sequence<DOMString> getSourceIds ();
 };

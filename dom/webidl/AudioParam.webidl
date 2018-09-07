@@ -10,7 +10,7 @@
  * liability, trademark and document use rules apply.
  */
 
-[Pref="dom.webaudio.enabled"]
+[Pref="dom.webaudio.enabled", LogCalls]
 interface AudioParam {
 
                     attribute float value;

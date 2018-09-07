@@ -10,7 +10,7 @@
  * liability, trademark and document use rules apply.
  */
 
-[Pref="dom.webaudio.enabled"]
+[Pref="dom.webaudio.enabled", LogCalls]
 interface AudioListener {
     // Uses a 3D cartesian coordinate system
     void setPosition(double x, double y, double z);

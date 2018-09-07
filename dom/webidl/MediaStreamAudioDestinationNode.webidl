@@ -11,7 +11,7 @@
  */
 
 [Pref="dom.webaudio.enabled",
- Constructor(AudioContext context, optional AudioNodeOptions options)]
+ Constructor(AudioContext context, optional AudioNodeOptions options), LogCalls]
 interface MediaStreamAudioDestinationNode : AudioNode {
     readonly attribute MediaStream stream;
 };

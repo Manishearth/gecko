@@ -15,7 +15,7 @@ dictionary MediaStreamAudioSourceOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(AudioContext context, MediaStreamAudioSourceOptions options)]
+ Constructor(AudioContext context, MediaStreamAudioSourceOptions options), LogCalls]
 interface MediaStreamAudioSourceNode : AudioNode {
 
 };

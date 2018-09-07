@@ -15,7 +15,7 @@ dictionary StereoPannerOptions : AudioNodeOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(BaseAudioContext context, optional StereoPannerOptions options)]
+ Constructor(BaseAudioContext context, optional StereoPannerOptions options), LogCalls]
 interface StereoPannerNode : AudioNode {
   readonly attribute AudioParam pan;
 };

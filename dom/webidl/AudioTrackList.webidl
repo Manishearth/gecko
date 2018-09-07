@@ -7,7 +7,7 @@
  * http://www.whatwg.org/specs/web-apps/current-work/#audiotracklist
  */
 
-[Pref="media.track.enabled"]
+[Pref="media.track.enabled", LogCalls]
 interface AudioTrackList : EventTarget {
   readonly attribute unsigned long length;
   getter AudioTrack (unsigned long index);

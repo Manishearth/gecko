@@ -15,7 +15,7 @@ dictionary MediaElementAudioSourceOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(AudioContext context, MediaElementAudioSourceOptions options)]
+ Constructor(AudioContext context, MediaElementAudioSourceOptions options), LogCalls]
 interface MediaElementAudioSourceNode : AudioNode {
 
 };

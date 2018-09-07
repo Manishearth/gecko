@@ -18,7 +18,7 @@ dictionary OfflineAudioContextOptions {
 
 [Constructor (OfflineAudioContextOptions contextOptions),
 Constructor(unsigned long numberOfChannels, unsigned long length, float sampleRate),
-Pref="dom.webaudio.enabled"]
+Pref="dom.webaudio.enabled", LogCalls]
 interface OfflineAudioContext : BaseAudioContext {
 
     [Throws]

@@ -16,7 +16,7 @@ dictionary DelayOptions : AudioNodeOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(BaseAudioContext context, optional DelayOptions options)]
+ Constructor(BaseAudioContext context, optional DelayOptions options), LogCalls]
 interface DelayNode : AudioNode {
 
     readonly attribute AudioParam delayTime;

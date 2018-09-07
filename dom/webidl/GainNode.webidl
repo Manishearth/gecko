@@ -15,7 +15,7 @@ dictionary GainOptions : AudioNodeOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(BaseAudioContext context, optional GainOptions options)]
+ Constructor(BaseAudioContext context, optional GainOptions options), LogCalls]
 interface GainNode : AudioNode {
 
     readonly attribute AudioParam gain;

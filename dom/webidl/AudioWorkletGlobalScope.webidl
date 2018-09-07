@@ -7,7 +7,7 @@
  * https://webaudio.github.io/web-audio-api/#audioworkletglobalscope
  */
 
-[Global=(Worklet,AudioWorklet),Exposed=AudioWorklet]
+[Global=(Worklet,AudioWorklet),Exposed=AudioWorklet, LogCalls]
 interface AudioWorkletGlobalScope : WorkletGlobalScope {
     void registerProcessor (DOMString name, VoidFunction processorCtor);
     readonly  attribute   unsigned long long currentFrame;

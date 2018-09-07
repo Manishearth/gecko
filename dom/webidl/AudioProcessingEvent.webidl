@@ -10,7 +10,7 @@
  * liability, trademark and document use rules apply.
  */
 
-[Pref="dom.webaudio.enabled"]
+[Pref="dom.webaudio.enabled", LogCalls]
 interface AudioProcessingEvent : Event {
 
   readonly attribute double playbackTime;

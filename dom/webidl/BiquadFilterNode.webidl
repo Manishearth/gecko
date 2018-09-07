@@ -30,7 +30,7 @@ dictionary BiquadFilterOptions : AudioNodeOptions {
 };
 
 [Pref="dom.webaudio.enabled",
- Constructor(BaseAudioContext context, optional BiquadFilterOptions options)]
+ Constructor(BaseAudioContext context, optional BiquadFilterOptions options), LogCalls]
 interface BiquadFilterNode : AudioNode {
 
     attribute BiquadFilterType type;

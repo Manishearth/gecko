@@ -10,6 +10,7 @@
  * liability, trademark and document use rules apply.
  */
 
+[LogCalls]
 interface AudioScheduledSourceNode : AudioNode {
                     attribute EventHandler onended;
     [Throws]
