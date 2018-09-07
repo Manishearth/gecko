@@ -1609,6 +1609,11 @@ class CGAbstractMethod(CGThing):
         profiler_label = self._auto_profiler_label()
         if profiler_label:
             prologue += "  %s\n\n" % profiler_label
+        if self.descriptor:
+            if self.descriptor.interface.getExtendedAttribute("LogCalls"):
+                label = self.use_counter_label()
+                if label:
+                    prologue += "  printf(\"USE_LOG %s.%s %s\\n\");\n\n" % label
 
         return prologue
 
@@ -1623,6 +1628,9 @@ class CGAbstractMethod(CGThing):
     JSContext* variable) in order to generate a profiler label for this method.
     """
     def profiler_label_and_jscontext(self):
+        return None # Override me!
+
+    def use_counter_label(self):
         return None # Override me!
 
 class CGAbstractStaticMethod(CGAbstractMethod):
@@ -1868,6 +1876,14 @@ class CGClassConstructor(CGAbstractStaticMethod):
         else:
             ctorName = self.descriptor.interface.identifier.name
         return ("%s constructor" % ctorName, "cx")
+
+    def use_counter_label(self):
+        name = self._ctor.identifier.name
+        if name != "constructor":
+            ctorName = name
+        else:
+            ctorName = self.descriptor.interface.identifier.name
+        return (self.descriptor.interface.identifier.name, ctorName, "constructor")
 
 # Encapsulate the constructor in a helper method to share genConstructorBody with CGJSImplMethod.
 class CGConstructNavigatorObject(CGAbstractMethod):
@@ -8603,6 +8619,11 @@ class CGSpecializedMethod(CGAbstractStaticMethod):
         method_name = self.method.identifier.name
         return ("%s.%s" % (interface_name, method_name), "cx")
 
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        method_name = self.method.identifier.name
+        return (interface_name, method_name, "method")
+
     @staticmethod
     def makeNativeName(descriptor, method):
         name = method.identifier.name
@@ -8863,6 +8884,10 @@ class CGStaticMethod(CGAbstractStaticBindingMethod):
         method_name = self.method.identifier.name
         return "%s.%s" % (interface_name, method_name)
 
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        method_name = self.method.identifier.name
+        return (interface_name, method_name, "method")
 
 class CGSpecializedGetter(CGAbstractStaticMethod):
     """
@@ -8970,6 +8995,11 @@ class CGSpecializedGetter(CGAbstractStaticMethod):
         attr_name = self.attr.identifier.name
         return ("get %s.%s" % (interface_name, attr_name), "cx")
 
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        attr_name = self.attr.identifier.name
+        return (interface_name, attr_name, "getter")
+
     @staticmethod
     def makeNativeName(descriptor, attr):
         name = attr.identifier.name
@@ -9033,6 +9063,10 @@ class CGStaticGetter(CGAbstractStaticBindingMethod):
         attr_name = self.attr.identifier.name
         return "get %s.%s" % (interface_name, attr_name)
 
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        attr_name = self.attr.identifier.name
+        return (interface_name, attr_name, "getter")
 
 class CGSpecializedSetter(CGAbstractStaticMethod):
     """
@@ -9059,6 +9093,11 @@ class CGSpecializedSetter(CGAbstractStaticMethod):
         interface_name = self.descriptor.interface.identifier.name
         attr_name = self.attr.identifier.name
         return ("set %s.%s" % (interface_name, attr_name), "cx")
+
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        attr_name = self.attr.identifier.name
+        return (interface_name, attr_name, "setter")
 
     @staticmethod
     def makeNativeName(descriptor, attr):
@@ -9094,6 +9133,10 @@ class CGStaticSetter(CGAbstractStaticBindingMethod):
         attr_name = self.attr.identifier.name
         return "set %s.%s" % (interface_name, attr_name)
 
+    def use_counter_label(self):
+        interface_name = self.descriptor.interface.identifier.name
+        attr_name = self.attr.identifier.name
+        return (interface_name, attr_name, "setter")
 
 class CGSpecializedForwardingSetter(CGSpecializedSetter):
     """

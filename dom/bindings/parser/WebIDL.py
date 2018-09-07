@@ -1743,6 +1743,7 @@ class IDLInterface(IDLInterfaceOrNamespace):
             elif (identifier == "NeedResolve" or
                   identifier == "OverrideBuiltins" or
                   identifier == "ChromeOnly" or
+                  identifier == "LogCalls" or
                   identifier == "Unforgeable" or
                   identifier == "LegacyEventInit" or
                   identifier == "ProbablyShortLivingWrapper" or
