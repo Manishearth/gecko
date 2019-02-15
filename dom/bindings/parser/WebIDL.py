@@ -4188,8 +4188,6 @@ class IDLAttribute(IDLInterfaceMember):
         self.lenientThis = False
         self._unforgeable = False
         self.stringifier = stringifier
-        self.enforceRange = False
-        self.clamp = False
         self.slotIndices = None
         assert maplikeOrSetlike is None or isinstance(maplikeOrSetlike, IDLMaplikeOrSetlike)
         self.maplikeOrSetlike = maplikeOrSetlike
@@ -4587,8 +4585,6 @@ class IDLArgument(IDLObjectWithIdentifier):
         self.variadic = variadic
         self.dictionaryMember = dictionaryMember
         self._isComplete = False
-        self.enforceRange = False
-        self.clamp = False
         self._allowTreatNonCallableAsNull = False
         self._extendedAttrDict = {}
         self.allowTypeAttributes = allowTypeAttributes

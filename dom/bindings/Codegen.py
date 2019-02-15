@@ -4573,8 +4573,6 @@ def getJSToNativeConversionInfo(type, descriptorProvider, failureCode=None,
                                 invalidEnumValueFatal=True,
                                 defaultValue=None,
                                 treatNullAs="Default",
-                                isEnforceRange=False,
-                                isClamp=False,
                                 isNullOrUndefined=False,
                                 exceptionCode=None,
                                 lenientFloatCode=None,
@@ -4652,9 +4650,8 @@ def getJSToNativeConversionInfo(type, descriptorProvider, failureCode=None,
     # And we can't both be an object and be null or undefined
     assert not isDefinitelyObject or not isNullOrUndefined
 
-    # Types can also have extended attributes, copy them over
-    isClamp = isClamp or type.clamp
-    isEnforceRange = isEnforceRange or type.enforceRange
+    isClamp = type.clamp
+    isEnforceRange = type.enforceRange
     if type.treatNullAsEmpty:
         treatNullAs = "EmptyString"
 
@@ -6452,8 +6449,6 @@ class CGArgumentConverter(CGThing):
             invalidEnumValueFatal=self.invalidEnumValueFatal,
             defaultValue=self.argument.defaultValue,
             treatNullAs=self.argument.treatNullAs,
-            isEnforceRange=self.argument.enforceRange,
-            isClamp=self.argument.clamp,
             lenientFloatCode=self.lenientFloatCode,
             isMember="Variadic" if self.argument.variadic else False,
             allowTreatNonCallableAsNull=self.argument.allowTreatNonCallableAsNull(),
@@ -8625,12 +8620,6 @@ class FakeArgument():
             self.treatNullAs = interfaceMember.treatNullAs
         else:
             self.treatNullAs = "Default"
-        if isinstance(interfaceMember, IDLAttribute):
-            self.enforceRange = interfaceMember.enforceRange
-            self.clamp = interfaceMember.clamp
-        else:
-            self.enforceRange = False
-            self.clamp = False
 
         self.identifier = FakeIdentifier(name)
 
@@ -13316,8 +13305,6 @@ class CGDictionary(CGThing):
              getJSToNativeConversionInfo(
                  member.type,
                  descriptorProvider,
-                 isEnforceRange=member.enforceRange,
-                 isClamp=member.clamp,
                  isMember="Dictionary",
                  isOptional=member.canHaveMissingValue(),
                  defaultValue=member.defaultValue,
